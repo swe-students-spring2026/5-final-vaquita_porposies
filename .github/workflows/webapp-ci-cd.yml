@@ -2,19 +2,19 @@ name: CI/CD (Web App)
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "web-app/**"
       - ".github/workflows/webapp-ci-cd.yml"
   pull_request:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "web-app/**"
       - ".github/workflows/webapp-ci-cd.yml"
 
 
 jobs:
-  web-app-quality:
+  test-web-app:
     runs-on: ubuntu-latest
 
     services:
@@ -58,3 +58,30 @@ jobs:
       - name: Run tests with coverage
         working-directory: web-app
         run: pipenv run pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+
+      - name: Verify Dockerfile exists
+        run: |
+          if [ ! -f web-app/Dockerfile ]; then
+            echo "::error::Required Dockerfile 'web-app/Dockerfile' does not exist. Quitting."
+            exit 1
+          fi
+
+      - name: Build Docker image
+        run: docker build -t project5-web-app:${{ github.sha }} web-app
+
+      - name: Push Docker image to DockerHub
+        if: github.event_name == 'push'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::error::DockerHub secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are required to push images."
+            exit 1
+          fi
+
+          echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          docker tag project5-web-app:${{ github.sha }} "$DOCKERHUB_USERNAME/project5-web-app:latest"
+          docker tag project5-web-app:${{ github.sha }} "$DOCKERHUB_USERNAME/project5-web-app:${{ github.sha }}"
+          docker push "$DOCKERHUB_USERNAME/project5-web-app:latest"
+          docker push "$DOCKERHUB_USERNAME/project5-web-app:${{ github.sha }}"

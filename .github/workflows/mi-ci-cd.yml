@@ -2,12 +2,12 @@ name: CI/CD (Machine Learning)
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "ml/**"
       - ".github/workflows/mi-ci-cd.yml"
   pull_request:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "ml/**"
       - ".github/workflows/mi-ci-cd.yml"
@@ -48,3 +48,30 @@ jobs:
           else
             echo "No tests found in ml/tests."
           fi
+
+      - name: Verify Dockerfile exists
+        run: |
+          if [ ! -f ml/Dockerfile ]; then
+            echo "::error::Required Dockerfile 'ml/Dockerfile' does not exist. Quitting."
+            exit 1
+          fi
+
+      - name: Build Docker image
+        run: docker build -t project5-ml:${{ github.sha }} ml
+
+      - name: Push Docker image to DockerHub
+        if: github.event_name == 'push'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::error::DockerHub secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are required to push images."
+            exit 1
+          fi
+
+          echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          docker tag project5-ml:${{ github.sha }} "$DOCKERHUB_USERNAME/project5-ml:latest"
+          docker tag project5-ml:${{ github.sha }} "$DOCKERHUB_USERNAME/project5-ml:${{ github.sha }}"
+          docker push "$DOCKERHUB_USERNAME/project5-ml:latest"
+          docker push "$DOCKERHUB_USERNAME/project5-ml:${{ github.sha }}"

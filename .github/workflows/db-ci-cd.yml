@@ -2,19 +2,19 @@ name: CI/CD (Database)
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "db/**"
       - ".github/workflows/db-ci-cd.yml"
   pull_request:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "db/**"
       - ".github/workflows/db-ci-cd.yml"
 
 
 jobs:
-  db-quality:
+  test-db:
     runs-on: ubuntu-latest
 
     services:
@@ -58,3 +58,30 @@ jobs:
       - name: Run tests with coverage
         working-directory: db
         run: pipenv run pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+
+      - name: Verify Dockerfile exists
+        run: |
+          if [ ! -f db/Dockerfile ]; then
+            echo "::error::Required Dockerfile 'db/Dockerfile' does not exist. Quitting."
+            exit 1
+          fi
+
+      - name: Build Docker image
+        run: docker build -t project5-db:${{ github.sha }} db
+
+      - name: Push Docker image to DockerHub
+        if: github.event_name == 'push'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::error::DockerHub secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are required to push images."
+            exit 1
+          fi
+
+          echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          docker tag project5-db:${{ github.sha }} "$DOCKERHUB_USERNAME/project5-db:latest"
+          docker tag project5-db:${{ github.sha }} "$DOCKERHUB_USERNAME/project5-db:${{ github.sha }}"
+          docker push "$DOCKERHUB_USERNAME/project5-db:latest"
+          docker push "$DOCKERHUB_USERNAME/project5-db:${{ github.sha }}"
