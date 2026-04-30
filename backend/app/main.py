@@ -1,9 +1,9 @@
 """main backend app file."""
 
-from logic.scraper import get_article
-from logic.sum import make_summary
-from logic.meme_gen import make_caption, make_file_name, pick_template
-from logic.storage import make_doc
+from app.logic.scraper import get_article
+from app.logic.sum import make_summary
+from app.logic.meme_gen import make_caption, make_file_name, pick_template
+from app.logic.storage import make_doc
 
 
 def health():

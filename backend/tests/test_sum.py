@@ -1,6 +1,6 @@
 """tests for summary functions."""
 
-from logic.sum import make_summary
+from app.logic.sum import make_summary
 
 
 def test_make_summary_empty():

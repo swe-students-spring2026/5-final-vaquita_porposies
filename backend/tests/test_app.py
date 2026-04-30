@@ -2,7 +2,7 @@
 
 import pytest
 
-from app import health, make_meme
+from app.main import health, make_meme
 
 
 def test_health():

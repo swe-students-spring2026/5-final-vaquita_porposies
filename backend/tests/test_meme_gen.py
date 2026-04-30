@@ -1,6 +1,6 @@
 """tests for meme generation functions."""
 
-from logic.meme_gen import make_caption, make_file_name, pick_template
+from app.logic.meme_gen import make_caption, make_file_name, pick_template
 
 
 def test_pick_template_default():

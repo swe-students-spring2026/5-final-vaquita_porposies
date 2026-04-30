@@ -1,6 +1,6 @@
 """tests for storage functions."""
 
-from logic.storage import make_doc
+from app.logic.storage import make_doc
 
 
 def test_make_doc():

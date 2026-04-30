@@ -2,7 +2,7 @@
 
 import pytest
 
-from logic.scraper import clean_text, get_article
+from app.logic.scraper import clean_text, get_article
 
 
 def test_clean_text_spaces():
