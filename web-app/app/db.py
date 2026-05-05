@@ -1,3 +1,6 @@
+"""database helper functions for the web app."""
+
+# pylint: disable=invalid-name,global-statement
 from __future__ import annotations
 
 import os
@@ -16,6 +19,7 @@ _client: MongoClient | None = None
 
 
 def get_database() -> Database | None:
+    """Return MongoDB database if MongoDB is configured."""
     global _client
 
     mongo_uri = os.getenv("MONGODB_URI")
@@ -29,8 +33,8 @@ def get_database() -> Database | None:
     return _client[db_name]
 
 
-
 def get_collection() -> Collection | None:
+    """Return MongoDB collection if database is configured."""
     database = get_database()
     if database is None:
         return None
@@ -39,15 +43,15 @@ def get_collection() -> Collection | None:
     return database[collection_name]
 
 
-
 def serialize_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Convert MongoDB _id field into string id field."""
     serialized = dict(record)
     serialized["id"] = str(serialized.pop("_id"))
     return serialized
 
 
-
 def save_meme_record(record: dict[str, Any]) -> str | None:
+    """Save a meme record and return inserted id."""
     collection = get_collection()
     if collection is None:
         return None
@@ -56,21 +60,25 @@ def save_meme_record(record: dict[str, Any]) -> str | None:
     return str(result.inserted_id)
 
 
-
 def get_recent_memes(limit: int = 20) -> list[dict[str, Any]]:
+    """Return recent meme records from MongoDB."""
     collection = get_collection()
     if collection is None:
-        raise RuntimeError("MongoDB is not configured. Set MONGODB_URI to enable history.")
+        raise RuntimeError(
+            "MongoDB is not configured. Set MONGODB_URI to enable history."
+        )
 
     documents = collection.find().sort("created_at", DESCENDING).limit(limit)
     return [serialize_record(document) for document in documents]
 
 
-
 def get_meme_by_id(record_id: str) -> dict[str, Any] | None:
+    """Return one meme record by id."""
     collection = get_collection()
     if collection is None:
-        raise RuntimeError("MongoDB is not configured. Set MONGODB_URI to enable history.")
+        raise RuntimeError(
+            "MongoDB is not configured. Set MONGODB_URI to enable history."
+        )
 
     if not ObjectId.is_valid(record_id):
         return None
@@ -82,8 +90,8 @@ def get_meme_by_id(record_id: str) -> dict[str, Any] | None:
     return serialize_record(document)
 
 
-
 def ping_database() -> bool:
+    """Check if MongoDB connection works."""
     database = get_database()
     if database is None:
         return False
