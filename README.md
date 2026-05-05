@@ -4,7 +4,7 @@
 
 # Final Project
 
-This repository contains a Python-based meme generation application built as a small monorepo. In its current state, the project has a web app, a backend/database support subsystem, a machine learning meme URL helper subsystem, and MongoDB for storing generated meme history.
+Our project contains a Python-based meme generation application built as a monorepo with 3 subsystems: a web app, a backend/database support subsystem using MongoDB, and a machine learning summarizer + meme generator.
 
 ## Team
 
@@ -29,7 +29,7 @@ The CI/CD workflows publish images to Docker Hub using the configured `DOCKERHUB
 - Machine learning: `DOCKERHUB_USERNAME/project5-ml`
 - Backend/database: `DOCKERHUB_USERNAME/project5-db`
 
-Replace `DOCKERHUB_USERNAME` with the Docker Hub account configured in GitHub Actions.
+Replace `DOCKERHUB_USERNAME` with the Docker Hub account configured in GitHub Actions. (graders please see .env on discord)
 
 ## Local Setup
 
@@ -45,16 +45,32 @@ The example contains:
 
 ```sh
 OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4.1-mini
+OPENAI_MODEL=gpt-5.4-mini
 MONGODB_URI=mongodb://localhost:27017
 MONGODB_DB_NAME=meme_generator
 MONGODB_COLLECTION_NAME=generated_memes
 ```
 
-Start MongoDB locally with Docker:
+Run the full local stack from the repository root with Docker Compose:
 
 ```sh
-docker run --rm --name project5-mongo -p 27017:27017 mongo:latest
+docker compose up --build
+```
+
+This builds and starts the web app, backend, machine learning subsystem, and MongoDB. The web app is available at `http://localhost:5000`.
+
+The `.env.example` MongoDB URI uses `localhost` for host-machine development. The Compose file overrides it inside containers with `mongodb://mongodb:27017`, which is the correct service name on the Docker Compose network.
+
+Stop the stack with:
+
+```sh
+docker compose down
+```
+
+To also remove the local MongoDB volume created by Compose:
+
+```sh
+docker compose down -v
 ```
 
 Install and test each Python subsystem:
