@@ -7,8 +7,10 @@ from typing import Any
 DEFAULT_DATABASE_NAME = "meme_generator"
 DEFAULT_COLLECTION_NAME = "generated_memes"
 
+
 def _timestamp() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
 
 SAMPLE_MEMES: list[dict[str, Any]] = [
     {
@@ -46,8 +48,10 @@ SAMPLE_MEMES: list[dict[str, Any]] = [
     },
 ]
 
+
 def build_generated_memes_seed() -> list[dict[str, Any]]:
     return deepcopy(SAMPLE_MEMES)
+
 
 def build_runtime_seed() -> list[dict[str, Any]]:
     records = build_generated_memes_seed()
