@@ -103,9 +103,37 @@ The Docker images do not include a MongoDB server or a baked-in database URI. Wh
 docker run --env-file .env -p 8080:8080 adamsolimannyu/project5-web-app:latest
 ```
 
-The web app image listens on `PORT` when set, otherwise `8080`. For DigitalOcean
-App Platform deployments that use the pre-built image, set the HTTP port to
-`8080` and use `/health` for readiness checks.
+The web app image listens on `PORT` when set, otherwise `8080`.
+
+## DigitalOcean Deployment
+
+The production deployment uses DigitalOcean App Platform with pre-built Docker
+Hub images. The build phase in DigitalOcean is skipped intentionally because
+GitHub Actions builds and pushes the images first.
+
+Configure the App Platform components with these ports and health checks:
+
+- Web app image: public HTTP port `8080`, readiness path `/health`
+- ML image: public HTTP port `8000`, readiness path `/health`
+
+The web app must also have `ML_URL` set to the DigitalOcean internal service URL
+for the ML component, not the local Compose hostname. Use this shape:
+
+```sh
+ML_URL=http://DIGITALOCEAN_ML_COMPONENT_NAME:8000
+```
+
+For example, if the ML component is named `adamsolimannyu-project-5-ml`, set:
+
+```sh
+ML_URL=http://adamsolimannyu-project-5-ml:8000
+```
+
+The ML image must run Uvicorn:
+
+```sh
+uvicorn meme.main:app --host 0.0.0.0 --port 8000
+```
 
 ## CI/CD
 
@@ -114,12 +142,24 @@ GitHub Actions workflows live in `.github/workflows/`:
 - `webapp-ci-cd.yml`
 - `mi-ci-cd.yml`
 - `db-ci-cd.yml`
+- `deploy-digitalocean.yml`
 
 Each workflow runs on pushes and pull requests targeting `main`. The workflows install dependencies, run tests, build Docker images, and push images to Docker Hub on pushes when these repository secrets are configured:
 
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
 
+The DigitalOcean deployment workflow runs only after the web app, ML, and
+backend image workflows have all succeeded for the same push to `main`. It then
+creates a new DigitalOcean App Platform deployment with `doctl`.
+
+The deployment workflow requires these additional GitHub Actions secrets:
+
+- `DIGITALOCEAN_ACCESS_TOKEN`
+- `DIGITALOCEAN_APP_ID`
+
+
 ## Database Seeding
 
-No required starter data or seed script is currently included. MongoDB collections are created as the application writes generated meme history.
+No required starter data or seed script is currently included. MongoDB
+collections are created as the application writes generated meme history.
