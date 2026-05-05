@@ -19,6 +19,24 @@ db = client[os.getenv("MONGODB_DB_NAME")]
 collection = db[os.getenv("MONGODB_COLLECTION_NAME")]
 
 
+def check_url(url):
+    """Return whether a URL was provided."""
+    return url != ""
+
+
+def make_request_data(url):
+    """Build request data for backend calls."""
+    if url == "":
+        raise ValueError("url is missing")
+
+    return {"url": url}
+
+
+def show_error(message):
+    """Return a simple error message."""
+    return "error: " + message
+
+
 # Home
 @main.route("/")
 def index():
