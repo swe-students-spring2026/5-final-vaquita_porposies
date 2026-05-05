@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
 import re
 from dataclasses import dataclass
 
@@ -44,42 +42,5 @@ def heuristic_caption(text: str) -> MemeCaption:
         bottom=shorten(" ".join(words[midpoint:]), 42),
     )
 
-def ai_caption(text: str) -> MemeCaption:
-    from openai import OpenAI
-
-    client = OpenAI()
-    response = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-        temperature=0.9,
-        response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You write short meme captions for students. "
-                    "Return valid JSON with keys top and bottom only."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    "Turn this article text or summary into a funny, clear meme caption. "
-                    "Keep each line under 8 words.\n\n"
-                    f"Input: {text}"
-                ),
-            },
-        ],
-    )
-    payload = json.loads(response.choices[0].message.content)
-    return MemeCaption(
-        top=shorten(str(payload.get("top", "Reading the article")), 40),
-        bottom=shorten(str(payload.get("bottom", "pretending I get it")), 40),
-    )
-
 def generate_caption(text: str, use_ai: bool = False) -> MemeCaption:
-    if use_ai:
-        try:
-            return ai_caption(text)
-        except Exception:
-            return heuristic_caption(text)
     return heuristic_caption(text)

@@ -21,8 +21,6 @@ class GenerateRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Article summary or pasted article text")
     source_url: str | None = Field(default=None, description="Original article URL if one exists")
     template: str = Field(default=DEFAULT_TEMPLATE, description="Memegen template ID")
-    use_ai: bool = Field(default=False, description="Whether to use AI caption generation when available")
-
 class GenerateResponse(BaseModel):
     person_name: str
     template: str
@@ -91,7 +89,7 @@ def history_item(record_id: str) -> dict[str, object]:
 
 @app.post("/generate", response_model=GenerateResponse)
 def generate_meme(payload: GenerateRequest) -> dict[str, str | None]:
-    caption = generate_caption(payload.text, use_ai=payload.use_ai)
+    caption = generate_caption(payload.text)
     response = build_response(payload.template, caption.top, caption.bottom)
     response["person_name"] = payload.person_name
     response["source_url"] = payload.source_url

@@ -8,7 +8,6 @@ fastapi = "*"
 uvicorn = "*"
 pydantic = "*"
 pymongo = "*"
-openai = "*"
 
 [dev-packages]
 pytest = "*"
