@@ -2,38 +2,181 @@
 
 # pylint: disable=redefined-outer-name
 import pytest
+from bson import ObjectId
+from flask import Flask
 
-from app import create_app
-
-
-@pytest.fixture
-def test_client():
-    """create test client."""
-    test_app = create_app()
-    test_app.config["TESTING"] = True
-
-    with test_app.test_client() as test_client:
-        yield test_client
-
-
-def test_home_route(test_client):
-    """check home page loads."""
-    response = test_client.get("/")
-
-    assert response.status_code == 200
+from app import routes
+from app.routes import (
+    check_url,
+    debug,
+    gallery,
+    index,
+    make_request_data,
+    meme_detail,
+    show_error,
+    submit,
+)
 
 
-def test_history_route_without_db(test_client, monkeypatch):
-    """check history route handles missing database."""
-    monkeypatch.delenv("MONGODB_URI", raising=False)
+class FakeCursor:
+    """Fake MongoDB cursor with sort chaining."""
 
-    response = test_client.get("/history")
+    def __init__(self, documents):
+        self.documents = documents
 
-    assert response.status_code in [200, 500]
+    def sort(self, _field, _direction):
+        """Return the same cursor after sorting."""
+        return self
+
+    def __iter__(self):
+        """Iterate over fake documents."""
+        return iter(self.documents)
 
 
-def test_health_route(test_client):
-    """check health route if it exists."""
-    response = test_client.get("/health")
+class FakeCollection:
+    """Fake MongoDB collection for route tests."""
 
-    assert response.status_code in [200, 404]
+    def __init__(self, documents=None, document=None):
+        self.documents = documents or []
+        self.document = document
+        self.inserted = None
+
+    def find(self):
+        """Return fake documents."""
+        return FakeCursor(self.documents)
+
+    def find_one(self, _query):
+        """Return one fake document."""
+        return self.document
+
+    def insert_one(self, document):
+        """Capture an inserted document."""
+        self.inserted = document
+
+
+@pytest.fixture(name="flask_app")
+def fixture_flask_app():
+    """Create a Flask app for request contexts."""
+    app = Flask(__name__)
+    app.register_blueprint(routes.main)
+    return app
+
+
+def test_check_url_empty():
+    """Check empty URL handling."""
+    assert check_url("") is False
+
+
+def test_check_url_normal():
+    """Check non-empty URL handling."""
+    assert check_url("https://example.com") is True
+
+
+def test_make_request_data_empty():
+    """Check request data rejects missing URL."""
+    with pytest.raises(ValueError):
+        make_request_data("")
+
+
+def test_make_request_data_normal():
+    """Check request data shape."""
+    assert make_request_data("https://example.com") == {"url": "https://example.com"}
+
+
+def test_show_error():
+    """check error message."""
+    assert show_error("bad url") == "error: bad url"
+
+
+def test_index_renders_memes(monkeypatch):
+    """Check index renders serialized meme ids."""
+    object_id = ObjectId()
+    fake_collection = FakeCollection([{"_id": object_id, "summary": "x"}])
+    monkeypatch.setattr(routes, "collection", fake_collection)
+    monkeypatch.setattr(
+        routes,
+        "render_template",
+        lambda template, **context: {"template": template, "context": context},
+    )
+
+    response = index()
+
+    assert response == {
+        "template": "index.html",
+        "context": {"memes": [{"_id": str(object_id), "summary": "x"}]},
+    }
+
+
+def test_debug_returns_count(monkeypatch):
+    """Check debug route response."""
+    monkeypatch.setattr(routes, "collection", FakeCollection([{"summary": "x"}]))
+
+    assert debug()["count"] == 1
+
+
+def test_meme_detail_not_found(monkeypatch):
+    """Check missing meme detail response."""
+    monkeypatch.setattr(routes, "collection", FakeCollection())
+
+    assert meme_detail(str(ObjectId())) == ("Not found", 404)
+
+
+def test_meme_detail_renders_meme(monkeypatch):
+    """Check meme detail renders serialized id."""
+    object_id = ObjectId()
+    monkeypatch.setattr(
+        routes,
+        "collection",
+        FakeCollection(document={"_id": object_id, "summary": "x"}),
+    )
+    monkeypatch.setattr(
+        routes,
+        "render_template",
+        lambda template, **context: {"template": template, "context": context},
+    )
+
+    response = meme_detail(str(object_id))
+
+    assert response == {
+        "template": "detail.html",
+        "context": {"meme": {"_id": str(object_id), "summary": "x"}},
+    }
+
+
+def test_gallery_renders_memes(monkeypatch):
+    """Check gallery route response."""
+    monkeypatch.setattr(routes, "collection", FakeCollection([{"summary": "x"}]))
+    monkeypatch.setattr(
+        routes,
+        "render_template",
+        lambda template, **context: {"template": template, "context": context},
+    )
+
+    assert gallery() == {
+        "template": "gallery.html",
+        "context": {"memes": [{"summary": "x"}]},
+    }
+
+
+def test_submit_inserts_document(monkeypatch, flask_app):
+    """Check submit route inserts form data."""
+    fake_collection = FakeCollection()
+    monkeypatch.setattr(routes, "collection", fake_collection)
+
+    with flask_app.test_request_context(
+        "/submit",
+        method="POST",
+        data={
+            "name": "Ada",
+            "article-link": "https://example.com",
+            "article-text": "Example text",
+        },
+    ):
+        response = submit()
+
+    assert response.status_code == 302
+    assert fake_collection.inserted == {
+        "person_name": "Ada",
+        "source_url": "https://example.com",
+        "article_text": "Example text",
+    }

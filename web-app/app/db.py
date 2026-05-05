@@ -1,9 +1,9 @@
-"""database helper functions for the web app."""
+"""MongoDB helpers for storing and reading generated meme records."""
 
-# pylint: disable=invalid-name,global-statement
 from __future__ import annotations
 
 import os
+from functools import lru_cache
 from typing import Any
 
 from bson import ObjectId
@@ -15,26 +15,26 @@ from pymongo.errors import PyMongoError
 DEFAULT_DB_NAME = "meme_generator"
 DEFAULT_COLLECTION_NAME = "generated_memes"
 
-_client: MongoClient | None = None
+
+@lru_cache(maxsize=1)
+def get_client(mongo_uri: str) -> MongoClient:
+    """Return a cached MongoDB client for the configured URI."""
+    return MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
 
 
 def get_database() -> Database | None:
-    """Return MongoDB database if MongoDB is configured."""
-    global _client
+    """Return the configured MongoDB database, or None when MongoDB is disabled."""
 
     mongo_uri = os.getenv("MONGODB_URI")
     if not mongo_uri:
         return None
 
-    if _client is None:
-        _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
-
     db_name = os.getenv("MONGODB_DB_NAME", DEFAULT_DB_NAME)
-    return _client[db_name]
+    return get_client(mongo_uri)[db_name]
 
 
 def get_collection() -> Collection | None:
-    """Return MongoDB collection if database is configured."""
+    """Return the configured meme collection, or None when MongoDB is disabled."""
     database = get_database()
     if database is None:
         return None
@@ -44,14 +44,14 @@ def get_collection() -> Collection | None:
 
 
 def serialize_record(record: dict[str, Any]) -> dict[str, Any]:
-    """Convert MongoDB _id field into string id field."""
+    """Convert a MongoDB document into a JSON-friendly record."""
     serialized = dict(record)
     serialized["id"] = str(serialized.pop("_id"))
     return serialized
 
 
 def save_meme_record(record: dict[str, Any]) -> str | None:
-    """Save a meme record and return inserted id."""
+    """Save a meme record and return its inserted id."""
     collection = get_collection()
     if collection is None:
         return None
@@ -61,7 +61,7 @@ def save_meme_record(record: dict[str, Any]) -> str | None:
 
 
 def get_recent_memes(limit: int = 20) -> list[dict[str, Any]]:
-    """Return recent meme records from MongoDB."""
+    """Return recently generated memes, newest first."""
     collection = get_collection()
     if collection is None:
         raise RuntimeError(
@@ -73,7 +73,7 @@ def get_recent_memes(limit: int = 20) -> list[dict[str, Any]]:
 
 
 def get_meme_by_id(record_id: str) -> dict[str, Any] | None:
-    """Return one meme record by id."""
+    """Return one meme by MongoDB object id."""
     collection = get_collection()
     if collection is None:
         raise RuntimeError(
@@ -91,7 +91,7 @@ def get_meme_by_id(record_id: str) -> dict[str, Any] | None:
 
 
 def ping_database() -> bool:
-    """Check if MongoDB connection works."""
+    """Return whether the configured MongoDB server responds to ping."""
     database = get_database()
     if database is None:
         return False
