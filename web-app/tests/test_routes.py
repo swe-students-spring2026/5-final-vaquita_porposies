@@ -175,7 +175,7 @@ def test_index_renders_memes(monkeypatch):
     """Check index renders serialized meme ids."""
     object_id = ObjectId()
     fake_collection = FakeCollection([{"_id": object_id, "summary": "x"}])
-    monkeypatch.setattr(routes, "collection", fake_collection)
+    monkeypatch.setattr(routes, "COLLECTION", fake_collection)
     monkeypatch.setattr(
         routes,
         "render_template",
@@ -195,14 +195,14 @@ def test_index_renders_memes(monkeypatch):
 
 def test_debug_returns_count(monkeypatch):
     """Check debug route response."""
-    monkeypatch.setattr(routes, "collection", FakeCollection([{"summary": "x"}]))
+    monkeypatch.setattr(routes, "COLLECTION", FakeCollection([{"summary": "x"}]))
 
     assert debug()["count"] == 1
 
 
 def test_meme_detail_not_found(monkeypatch):
     """Check missing meme detail response."""
-    monkeypatch.setattr(routes, "collection", FakeCollection())
+    monkeypatch.setattr(routes, "COLLECTION", FakeCollection())
 
     assert meme_detail(str(ObjectId())) == ("Not found", 404)
 
@@ -212,7 +212,7 @@ def test_meme_detail_renders_meme(monkeypatch):
     object_id = ObjectId()
     monkeypatch.setattr(
         routes,
-        "collection",
+        "COLLECTION",
         FakeCollection(document={"_id": object_id, "summary": "x"}),
     )
     monkeypatch.setattr(
@@ -231,7 +231,7 @@ def test_meme_detail_renders_meme(monkeypatch):
 
 def test_gallery_renders_memes(monkeypatch):
     """Check gallery route response."""
-    monkeypatch.setattr(routes, "collection", FakeCollection([{"summary": "x"}]))
+    monkeypatch.setattr(routes, "COLLECTION", FakeCollection([{"summary": "x"}]))
     monkeypatch.setattr(
         routes,
         "render_template",
@@ -247,7 +247,7 @@ def test_gallery_renders_memes(monkeypatch):
 def test_submit_generates_meme(monkeypatch, flask_app):
     """Check submit route triggers meme generation."""
     fake_collection = FakeCollection()
-    monkeypatch.setattr(routes, "collection", fake_collection)
+    monkeypatch.setattr(routes, "COLLECTION", fake_collection)
     generated = {}
     monkeypatch.setattr(
         routes,
