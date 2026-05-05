@@ -186,10 +186,10 @@ def test_index_renders_memes(monkeypatch):
 
     assert response == {
         "template": "index.html",
-            "context": {
-                "memes": [{"_id": str(object_id), "summary": "x"}],
-                "templates": routes.SUPPORTED_TEMPLATES,
-            },
+        "context": {
+            "memes": [{"_id": str(object_id), "summary": "x"}],
+            "templates": routes.SUPPORTED_TEMPLATES,
+        },
     }
 
 
