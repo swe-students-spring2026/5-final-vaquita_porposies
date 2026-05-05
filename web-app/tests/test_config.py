@@ -10,4 +10,4 @@ def test_app_name():
 
 def test_backend_url():
     """check backend url."""
-    assert BACKEND_URL == "http://backend:8000"
+    assert BACKEND_URL == "http://ml:8000"

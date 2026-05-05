@@ -8,6 +8,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 from bson import ObjectId
 from dotenv import load_dotenv
 
+from .config import BACKEND_URL
 from .db import get_collection
 
 load_dotenv(dotenv_path="../.env")
@@ -17,7 +18,7 @@ SUPPORTED_TEMPLATES = ["buzz", "drake", "ds", "wonka", "fry", "doge"]
 main = Blueprint("main", __name__)
 
 collection = None
-ML_URL = os.getenv("ML_URL", "http://ml:8000").rstrip("/")
+ML_URL = os.getenv("ML_URL", BACKEND_URL).rstrip("/")
 
 
 def _get_collection():
