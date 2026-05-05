@@ -11,10 +11,7 @@ load_dotenv(dotenv_path="../.env")
 main = Blueprint("main", __name__)
 
 # MongoDB connection
-client = MongoClient(
-    os.getenv("MONGODB_URI"),
-    serverSelectionTimeoutMS=5000
-)
+client = MongoClient(os.getenv("MONGODB_URI"), serverSelectionTimeoutMS=5000)
 
 # print(client.admin.command("ping"))
 
@@ -42,7 +39,7 @@ def debug():
     return {"count": len(docs), "sample": str(docs[:1])}
 
 
-#  Meme detail page 
+#  Meme detail page
 @main.route("/meme/<meme_id>")
 def meme_detail(meme_id):
     """Show a single meme."""
@@ -56,7 +53,7 @@ def meme_detail(meme_id):
     return render_template("detail.html", meme=doc)
 
 
-#  Gallery 
+#  Gallery
 @main.route("/gallery")
 def gallery():
     """Show all memes present in the DB."""
@@ -64,7 +61,7 @@ def gallery():
     return render_template("gallery.html", memes=memes)
 
 
-#  Submit form 
+#  Submit form
 @main.route("/submit", methods=["POST"])
 def submit():
     """Insert info to be passed to models to generate memes."""
