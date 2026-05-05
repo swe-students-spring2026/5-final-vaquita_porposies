@@ -87,6 +87,9 @@ def generate_meme_record(name, url, text, template=None):
     if not source_url and not article_text:
         raise ValueError("Article text or URL is required")
 
+    if source_url != "":
+        article_text = ""
+
     payload = {
         "person_name": (name or "").strip() or "Anonymous",
         "source_url": source_url or None,
