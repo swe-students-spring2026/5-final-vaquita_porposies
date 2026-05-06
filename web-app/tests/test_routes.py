@@ -136,7 +136,7 @@ def test_generate_meme_record_posts_to_ml(monkeypatch):
         "json": {
             "person_name": "Ada",
             "source_url": "https://example.com",
-            "text": "Example text",
+            "text": None,
             "template": "drake",
         },
         "timeout": 90,
