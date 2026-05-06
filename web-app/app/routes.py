@@ -23,7 +23,7 @@ ML_URL = os.getenv("ML_URL", BACKEND_URL).rstrip("/")
 
 def _get_collection():
     """Return the configured collection or raise a route-level error."""
-    configured_collection = collection if collection is not None else get_collection()
+    configured_collection = COLLECTION if COLLECTION is not None else get_collection()
     if configured_collection is None:
         raise RuntimeError(
             "MongoDB is not configured. Set MONGODB_URI to enable history."

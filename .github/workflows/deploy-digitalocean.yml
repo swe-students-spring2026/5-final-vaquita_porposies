@@ -1,0 +1,106 @@
+name: Deploy DigitalOcean App
+
+on:
+  workflow_run:
+    workflows:
+      - CI/CD (Web App)
+      - CI/CD (Machine Learning)
+      - CI/CD (Database)
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: deploy-digitalocean-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy after all images pass
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Check all image workflows passed for this commit
+        id: checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
+        run: |
+          set -euo pipefail
+
+          required_workflows=(
+            "CI/CD (Web App)"
+            "CI/CD (Machine Learning)"
+            "CI/CD (Database)"
+          )
+
+          runs="$(gh api "repos/${REPO}/actions/runs?head_sha=${SHA}&status=completed&per_page=100")"
+
+          latest_workflow=""
+          latest_updated_at=""
+
+          for workflow in "${required_workflows[@]}"; do
+            result="$(
+              jq -r --arg workflow "$workflow" '
+                .workflow_runs
+                | map(select(.name == $workflow))
+                | sort_by(.updated_at)
+                | reverse
+                | .[0]
+                | [(.conclusion // ""), (.updated_at // "")]
+                | @tsv
+              ' <<< "$runs"
+            )"
+
+            conclusion="$(cut -f1 <<< "$result")"
+            updated_at="$(cut -f2 <<< "$result")"
+
+            if [ "$conclusion" != "success" ]; then
+              echo "${workflow} has not succeeded for ${SHA}; skipping deploy."
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [ -z "$latest_updated_at" ] || [[ "$updated_at" > "$latest_updated_at" ]]; then
+              latest_updated_at="$updated_at"
+              latest_workflow="$workflow"
+            fi
+          done
+
+          if [ "$TRIGGER_WORKFLOW" != "$latest_workflow" ]; then
+            echo "Latest completed required workflow is ${latest_workflow}; ${TRIGGER_WORKFLOW} will not deploy."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "All required image workflows passed for ${SHA}; deploying DigitalOcean app."
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install doctl
+        if: steps.checks.outputs.deploy == 'true'
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Create DigitalOcean deployment
+        if: steps.checks.outputs.deploy == 'true'
+        env:
+          DIGITALOCEAN_APP_ID: ${{ secrets.DIGITALOCEAN_APP_ID }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DIGITALOCEAN_APP_ID:-}" ]; then
+            echo "::error::DIGITALOCEAN_APP_ID secret is required."
+            exit 1
+          fi
+
+          doctl apps create-deployment "$DIGITALOCEAN_APP_ID" --wait
